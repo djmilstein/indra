@@ -101,7 +101,7 @@ class WeightPathsByEvidence(object):
     def _compute_node_evidence(self):
         """Computes the supporting evidence for each node of the cfpg."""
         self.node_evidence = {}
-        for node in cfpg.graph.nodes():
+        for node in self.cfpg.graph.nodes():
             if self._cfpg_intermediate(node):
                 history = self._cfpg_node_history(node)
 

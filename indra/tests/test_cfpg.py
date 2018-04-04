@@ -5,6 +5,8 @@ from os.path import dirname, join
 import numpy as np
 import networkx as nx
 from indra.explanation import paths_graph as pg
+from indra.explanation.paths_graph.paths_weighted_by_evidence import \
+        WeightPathsByEvidence
 
 random_graph_pkl = join(dirname(__file__), 'random_graphs.pkl')
 
@@ -284,4 +286,54 @@ def test_combine_cfpgs():
     paths = cpg.sample_paths(1000)
     path_ctr = Counter(paths)
 
+def test_weight_paths_by_evidence():
+    g_orig = nx.DiGraph()
+    g_orig.add_edges_from((
+                              ('A', 'B2'),
+                              ('B2', 'C1'),
+                              ('B2', 'C2'),
+                              ('C2', 'D1'),
+                              
+                              ('A', 'B1'),
+                              ('B1', 'C1'),
+                              ('C1', 'D1'),
 
+                              ('A', 'B3'),
+                              ('B3', 'C3'),
+                              ('C3', 'D1')
+                            ))
+    main_path = ('A', 'B1', 'C1', 'D1')
+    secondary_path = ('A', 'B2', 'C1', 'D1')
+    source = 'A'
+    target = 'D1'
+    length = 3
+
+    cfpg = pg.CFPG.from_graph(g_orig, source, target, length)
+
+    evidence = { ('A', 'B2') : 100,
+                 ('B2', 'C2') : 2,
+                 ('A', 'C2') : 2,
+                 ('A', 'B1') : 1500,
+                 ('A', 'C1') : 500,
+                 ('B1', 'C1') : 500,
+                 ('B2', 'C1') : 500,
+                 ('A', 'B3') : 5,
+                 ('A', 'C3') : 5,
+                 ('A', 'D1') : 500,
+                 ('C2', 'D1') : 5,
+                 ('C1', 'D1') : 500,
+                 ('C3', 'D1') : 5
+              }
+
+    weightedPaths = WeightPathsByEvidence(g_orig, cfpg, evidence)
+
+    key1 = (1, 'B2', frozenset({(0, 'A'), (1, 'B2')}))
+    assert(weightedPaths.node_evidence[key1] == 100)
+    assert(weightedPaths.node_and_children_evidence[key1] == 3109)
+
+    key2 = (2, 'C3', frozenset({(0, 'A'), (2, 'C3'), (1, 'B3')}))
+    assert(weightedPaths.node_evidence[key2] == 510)
+    assert(weightedPaths.node_and_children_evidence[key2] == 510)
+    
+    key3 = (0, 'A', 0)
+    assert(weightedPaths.node_and_children_evidence[key3] == 7624)
