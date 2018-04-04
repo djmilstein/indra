@@ -166,7 +166,7 @@ class WeightPathsByEvidence(object):
             is no such node in the cfpg graph.
         """
         node_cfpg = []
-        for node in cfpg.graph.successors(cfpg_current):
+        for node in self.cfpg.graph.successors(cfpg_current):
             if node[1] == original_next:
                 node_cfpg.append(node)
 

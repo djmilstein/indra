@@ -337,3 +337,15 @@ def test_weight_paths_by_evidence():
     
     key3 = (0, 'A', 0)
     assert(weightedPaths.node_and_children_evidence[key3] == 7624)
+
+    path1 = ('A', 'B1', 'C1', 'D1')
+    assert(weightedPaths.evaluate_path(path1) == 4000)
+
+    path2 = ('A', 'B2', 'C1', 'D1')
+    assert(weightedPaths.evaluate_path(path2) == 2600)
+
+    path3 = ('A', 'B2', 'C2', 'D1')
+    assert(weightedPaths.evaluate_path(path3) == 609)
+
+    path4 = ('A', 'B3', 'C3', 'D1')
+    assert(weightedPaths.evaluate_path(path4) == 515)
