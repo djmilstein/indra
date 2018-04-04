@@ -41,6 +41,9 @@ class WeightPathsByEvidence(object):
             self._debug_output()
 
     def _debug_output(self):
+        """For the sake of debugging, prints out the node evidence and
+        node+descendant evidence for each node of the cfpg (node evidence not
+        computed for the source and target nodes."""
         if not debug:
             return
         for node in self.cfpg.graph.nodes():
@@ -50,14 +53,26 @@ class WeightPathsByEvidence(object):
             else:
                 print('\tNo node evidence')
             if node in self.node_and_descendant_evidence:
-                print('\tNode and children:',
+                print('\tNode and descendants:',
                         self.node_and_descendant_evidence[node])
             else:
                 print('\tNo node and children evidence')
 
     def estimate_path_distribution(self, num_samples):
         """Samples many paths, and estimates the probability of each based on
-        how frequently it is sampled."""
+        how frequently it is sampled.
+        
+        Attributes
+        ----------
+        num_samples: int
+            The number of paths to sample in estimating the distribution
+
+        Returns
+        -------
+        path_dist: dict
+            A dictionary mapping a path tuple to the empirical probability that
+            this path occurs in the sample.
+        """
         path_counts = defaultdict(int)
 
         # Sample paths and count how many of each path we sample
@@ -131,7 +146,19 @@ class WeightPathsByEvidence(object):
         return path_evidence
 
     def _cfpg_node_history(self, cfpg_node_name):
-        """Returns the set of nodes in the history."""
+        """Returns the set of nodes in the history.
+        
+        Attributes
+        ----------
+        cfpg_node_name: str
+            The name of a node in the cfpg
+
+        Returns
+        -------
+        history: list<str>
+            A list of previously visited nodes in the original graph
+            corresponding to this node in the cfpg (in no particular order)
+        """
         fs = cfpg_node_name[2]
         history = list([v[1] for v in fs])
         history.remove(cfpg_node_name[1])  # Remove the name of the current node
@@ -228,7 +255,12 @@ class WeightPathsByEvidence(object):
             return None
  
     def _compute_node_evidence(self):
-        """Computes the supporting evidence for each node of the cfpg."""
+        """Computes the supporting evidence for each node of the cfpg.
+       
+        Specifically, populates self.node_evidence, a dictionary mapping
+        the cfpg node name to the number of statements giving evidence
+        that a node in the history causes the current node.
+        """
         self.node_evidence = {}
         for node in self.cfpg.graph.nodes():
             if self._cfpg_intermediate(node):
@@ -251,7 +283,13 @@ class WeightPathsByEvidence(object):
 
 
     def _compute_node_and_children_evidence(self):
-        """Computes evidence for a node and all of its children."""
+        """Computes evidence for a node and all of its children.
+
+        Specifically, populates self.node_and_descendant_evidence, a dictionary
+        mapping a cfpg node name to the sum of the node evidence of this
+        cfpg node and the node evidence for all descendant cfpg nodes (where
+        the node evidences is computed by _compute_node_evidence).
+        """
         self.node_and_descendant_evidence = {}
         target = self._cfpg_target()
         process_these_next = self.cfpg.graph.predecessors(target)
@@ -276,6 +314,8 @@ class WeightPathsByEvidence(object):
                 process_these_next.extend(self.cfpg.graph.predecessors(node))
 
 if __name__ == '__main__':
+    # For debugging and testing:
+    # populates an example graph and prints some output from example operations
     g_orig = nx.DiGraph()
     g_orig.add_edges_from((
                               ('A', 'B2'),
