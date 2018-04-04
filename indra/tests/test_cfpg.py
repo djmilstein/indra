@@ -7,6 +7,7 @@ import networkx as nx
 from indra.explanation import paths_graph as pg
 from indra.explanation.paths_graph.paths_weighted_by_evidence import \
         WeightPathsByEvidence
+from math import floor
 
 random_graph_pkl = join(dirname(__file__), 'random_graphs.pkl')
 
@@ -325,18 +326,19 @@ def test_weight_paths_by_evidence():
                  ('C3', 'D1') : 5
               }
 
-    weightedPaths = WeightPathsByEvidence(g_orig, cfpg, evidence)
+    random_seed = sum([ord(c) for c in 'indra'])
+    weightedPaths = WeightPathsByEvidence(g_orig, cfpg, evidence, random_seed)
 
     key1 = (1, 'B2', frozenset({(0, 'A'), (1, 'B2')}))
     assert(weightedPaths.node_evidence[key1] == 100)
-    assert(weightedPaths.node_and_children_evidence[key1] == 3109)
+    assert(weightedPaths.node_and_descendant_evidence[key1] == 3109)
 
     key2 = (2, 'C3', frozenset({(0, 'A'), (2, 'C3'), (1, 'B3')}))
     assert(weightedPaths.node_evidence[key2] == 510)
-    assert(weightedPaths.node_and_children_evidence[key2] == 510)
+    assert(weightedPaths.node_and_descendant_evidence[key2] == 510)
     
     key3 = (0, 'A', 0)
-    assert(weightedPaths.node_and_children_evidence[key3] == 7624)
+    assert(weightedPaths.node_and_descendant_evidence[key3] == 7624)
 
     path1 = ('A', 'B1', 'C1', 'D1')
     assert(weightedPaths.evaluate_path(path1) == 4000)
@@ -349,3 +351,13 @@ def test_weight_paths_by_evidence():
 
     path4 = ('A', 'B3', 'C3', 'D1')
     assert(weightedPaths.evaluate_path(path4) == 515)
+
+    # Test path sampling
+    path_dist = weightedPaths.estimate_path_distribution(int(1e3))
+    # Probability for dominant path around 0.939
+    assert(floor(path_dist[path1] * 1000) == 939) 
+    # Probability for secondary path around 0.05
+    assert(floor(path_dist[path2] * 100) == 5) 
+    # Probabilities for remaining paths are very small
+    assert(floor(path_dist[path3] * 1000) == 9) 
+    assert(floor(path_dist[path4] * 1000) == 2) 

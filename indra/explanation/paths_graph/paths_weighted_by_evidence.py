@@ -2,6 +2,9 @@ import logging
 import networkx as nx
 from indra.explanation import paths_graph as pg
 import matplotlib.pyplot as plt
+import numpy as np
+import numpy.random as npr
+from collections import defaultdict
 
 logger = logging.getLogger('paths_weighted_by_evidence')
 
@@ -21,12 +24,14 @@ class WeightPathsByEvidence(object):
         number of times evidence for this relationship appears.
         Ex. {('A', 'B'): 3, ('A', 'C'): 5, ('A', 'B'): 15]
     """
-    def __init__(self, graph, cfpg, evidence):
+    def __init__(self, graph, cfpg, evidence, random_seed=None):
         self.graph = graph
         self.cfpg = cfpg
         self.evidence = evidence
         self.source_name = cfpg.source_name
         self.target_name = cfpg.target_name
+
+        self.r = npr.RandomState(random_seed)
 
         self._compute_node_evidence()
         self._compute_node_and_children_evidence()
@@ -44,11 +49,55 @@ class WeightPathsByEvidence(object):
                 print('\tNode evidence:', self.node_evidence[node])
             else:
                 print('\tNo node evidence')
-            if node in self.node_and_children_evidence:
+            if node in self.node_and_descendant_evidence:
                 print('\tNode and children:',
-                        self.node_and_children_evidence[node])
+                        self.node_and_descendant_evidence[node])
             else:
                 print('\tNo node and children evidence')
+
+    def estimate_path_distribution(self, num_samples):
+        """Samples many paths, and estimates the probability of each based on
+        how frequently it is sampled."""
+        path_counts = defaultdict(int)
+
+        # Sample paths and count how many of each path we sample
+        for i in range(num_samples):
+            path = self.sample_path()
+            path_counts[path] = path_counts[path] + 1
+
+        # Compute the empirical probability of each path from these samples
+        total = float(sum(path_counts.values()))
+        path_probs = {}
+        for path in path_counts:
+            path_probs[path] = float(path_counts[path]) / total
+
+        return path_probs
+
+    def sample_path(self):
+        """Samples a path at random, weighted by the evidence supporting the
+        path."""
+        path = [self.source_name]
+        current_node = self._cfpg_source()
+        while not self._cfpg_penultimate(current_node):
+            # We sort the children so the sampling is deterministic when the
+            # random number generator is seeded (allowing for unit tests)
+            children = sorted(self.cfpg.graph.successors(current_node))
+
+            # Compute the probability of transitioning to each child
+            #
+            # Number of statements supporting a child and its descendants:
+            children_evidence = [self.node_evidence[c] for c in children]
+            # Normalize to compute probability of selecting each one
+            total = float(sum(children_evidence))
+            probs = [float(ev) / total for ev in children_evidence]
+            assert(abs(1-sum(probs)) < 1e-6)
+
+            # Choose a child accoding to this discrete probability distribution
+            chosen_ind = self.r.choice(len(children), p=probs)
+            current_node = children[chosen_ind]
+            path.append(current_node[1])
+        path.append(self.target_name)
+        return tuple(path)
 
     def evaluate_path(self, path):
         """Gives the number of statements supporting the given path.
@@ -84,7 +133,7 @@ class WeightPathsByEvidence(object):
     def _cfpg_node_history(self, cfpg_node_name):
         """Returns the set of nodes in the history."""
         fs = cfpg_node_name[2]
-        history = set([v[1] for v in fs])
+        history = list([v[1] for v in fs])
         history.remove(cfpg_node_name[1])  # Remove the name of the current node
         return history
 
@@ -193,8 +242,8 @@ class WeightPathsByEvidence(object):
                 # evidence for the penulatimate node.
                 if self._cfpg_penultimate(node):
                     # History of getting to target node
-                    extended_history = set(history)
-                    extended_history.add(node[1])
+                    extended_history = list(history)
+                    extended_history.append(node[1])
                     num_evidence = num_evidence + \
                                    self._evidence_for_node_and_history(
                                            self.target_name, extended_history)
@@ -203,13 +252,13 @@ class WeightPathsByEvidence(object):
 
     def _compute_node_and_children_evidence(self):
         """Computes evidence for a node and all of its children."""
-        self.node_and_children_evidence = {}
+        self.node_and_descendant_evidence = {}
         target = self._cfpg_target()
         process_these_next = self.cfpg.graph.predecessors(target)
 
         while len(process_these_next) > 0:
             # Put the next set of nodes to process in the queue
-            queue = set(process_these_next)
+            queue = process_these_next
             process_these_next = []
 
             for node in queue:
@@ -219,10 +268,10 @@ class WeightPathsByEvidence(object):
                     num_evidence = self.node_evidence[node]
                 for child in self.cfpg.graph.successors(node):
                     if child != target:
-                        assert(child in self.node_and_children_evidence)
+                        assert(child in self.node_and_descendant_evidence)
                         num_evidence = num_evidence + \
-                                       self.node_and_children_evidence[child]
-                self.node_and_children_evidence[node] = num_evidence
+                                       self.node_and_descendant_evidence[child]
+                self.node_and_descendant_evidence[node] = num_evidence
 
                 process_these_next.extend(self.cfpg.graph.predecessors(node))
 
@@ -265,10 +314,12 @@ if __name__ == '__main__':
                  ('C3', 'D1') : 5
               }
 
-    weightedPaths = WeightPathsByEvidence(g_orig, cfpg, evidence)
+    random_seed = sum([ord(c) for c in 'indra'])
+    weightedPaths = WeightPathsByEvidence(g_orig, cfpg, evidence, random_seed)
     node0 = cfpg.graph.nodes()[0]
 
     paths = cfpg.enumerate_paths()
-    for path in paths:
-        print(path)
-        print(weightedPaths.evaluate_path(path))
+    npr.seed(0)
+    path_dist = weightedPaths.estimate_path_distribution(int(1e3))
+    for path in path_dist:
+        print(path, path_dist[path])
