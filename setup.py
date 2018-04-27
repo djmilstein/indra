@@ -4,8 +4,6 @@ from setuptools import setup
 import sys
 
 
-
-
 def main():
     # Only install functools32 if we're in Python 2 (it's not available
     # for Python 3)
@@ -28,9 +26,9 @@ def main():
           version='1.6.0',
           description='Integrated Network and Dynamical Reasoning Assembler',
           long_description='INDRA is a framework '
-              'for assembling rule-based mathematical models and '
-              'mechanistic networks of biochemical systems from natural '
-              'language and pathway databases.',
+                           'for assembling rule-based mathematical models and '
+                           'mechanistic networks of biochemical systems from '
+                           'natural language and pathway databases.',
           author='Benjamin Gyori',
           author_email='benjamin_gyori@hms.harvard.edu',
           url='http://github.com/sorgerlab/indra',
@@ -53,7 +51,8 @@ def main():
                     'indra.tools.reading.util',
                     'indra.tools.machine', 'indra.util'],
           install_requires=install_list,
-          tests_require=['jnius-indra', 'jsonschema', 'coverage', 'matplotlib'],
+          tests_require=['jnius-indra', 'jsonschema', 'coverage',
+                         'matplotlib'],
           extras_require=extras_require,
           include_package_data=True,
           keywords=['systems', 'biology', 'model', 'pathway', 'assembler',
@@ -71,8 +70,9 @@ def main():
             'Topic :: Scientific/Engineering :: Mathematics',
             ],
           entry_points={'console_scripts':
-                        ['indra-machine = indra.tools.machine.cli:main']}
-        )
+                        ['indra-machine = indra.tools.machine.cli:main']
+                       }
+           )
 
 
 if __name__ == '__main__':
