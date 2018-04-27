@@ -7,6 +7,7 @@ from indra.sources import bel, trips
 from indra.util import plot_formatting as pf
 from indra.assemblers import PysbAssembler
 
+
 def plot_result(model, sol):
     pf.set_fig_params()
     plt.ion()

@@ -5,11 +5,14 @@ import requests
 from indra.databases import hgnc_client
 from indra.statements import *
 
+
 def gnd(gene_name):
     return {'HGNC': hgnc_client.get_hgnc_id(gene_name)}
 
+
 def ag(gene_name, **kwargs):
     return Agent(gene_name, db_refs=gnd(gene_name), **kwargs)
+
 
 sos1 = ag('SOS1')
 rasa1 = ag('RASA1')
@@ -66,6 +69,6 @@ pybel.to_bel_path(belgraph, 'simple_pybel.bel')
 # Upload to PyBEL web
 with open('pybel_model.json', 'wt') as f:
     pybel.to_json_file(pba.model, f)
-url =  'https://pybel.scai.fraunhofer.de/api/receive'
+url = 'https://pybel.scai.fraunhofer.de/api/receive'
 headers = {'content-type': 'application/json'}
 requests.post(url, json=pybel.to_json(pba.model), headers=headers)
